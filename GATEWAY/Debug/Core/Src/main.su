@@ -1,0 +1,15 @@
+../Core/Src/main.c:96:5:main	8	static
+../Core/Src/main.c:166:6:SystemClock_Config	72	static
+../Core/Src/main.c:203:13:MX_SPI1_Init	8	static
+../Core/Src/main.c:241:13:MX_USART1_UART_Init	8	static
+../Core/Src/main.c:274:13:MX_USART2_UART_Init	8	static
+../Core/Src/main.c:307:13:MX_GPIO_Init	40	static
+../Core/Src/main.c:343:6:HAL_UART_RxCpltCallback	16	static
+../Core/Src/main.c:354:6:Switch_to_Transmitt_mode	16	static
+../Core/Src/main.c:359:6:Transmitt_srvr_msg_to_node	16	static
+../Core/Src/main.c:374:6:Switch_to_Receiver_mode	8	static
+../Core/Src/main.c:379:6:Gateway_NRF_Init	112	static
+../Core/Src/main.c:390:6:process_received_data_from_node	8	static
+../Core/Src/main.c:400:6:process_data_rcvd_frm_srvr	8	static
+../Core/Src/main.c:405:6:check_id_for_tx_mode	8	static
+../Core/Src/main.c:420:6:Error_Handler	8	static,ignoring_inline_asm

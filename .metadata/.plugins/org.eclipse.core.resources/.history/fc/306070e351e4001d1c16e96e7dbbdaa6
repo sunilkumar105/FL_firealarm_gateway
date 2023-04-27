@@ -1,0 +1,447 @@
+/* USER CODE BEGIN Header */
+//huart1 PA9,10is the debug port OF NRF, huart2 PA2,3is the server port
+/**
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2023 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
+/* USER CODE END Header */
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include "MY_NRF24.h"
+#include "utility.h"
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+SPI_HandleTypeDef hspi1;
+
+UART_HandleTypeDef huart1;
+UART_HandleTypeDef huart2;
+
+/* USER CODE BEGIN PV */
+
+/* USER CODE END PV */
+
+/* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+static void MX_SPI1_Init(void);
+static void MX_USART2_UART_Init(void);
+static void MX_USART1_UART_Init(void);
+/* USER CODE BEGIN PFP */
+void Gateway_NRF_Init(void);
+void Switch_To_Tx_Mode(void);
+void Switch_To_Rx_Mode(void);
+void Transmit_Server_Msg_To_Node(void);
+void Switch_to_Transmitt_mode(uint64_t);
+void Transmitt_srvr_msg_to_node(void);
+void Switch_to_Receiver_mode(void);
+void process_received_data_from_node(void);
+void process_data_rcvd_frm_srvr(void);
+void check_id_for_tx_mode();
+/* USER CODE END PFP */
+
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
+uint64_t pipe_addr = 0x11223344AA;
+char received_data_from_nodes[50];
+char trimmed_data_received_from_node[6];
+char node_id[4];
+char node_status[2];
+
+//////**handle server**////////
+uint8_t received_data_from_srvr[32];
+uint64_t pip_add_for_data_tx;
+char trimmed_data_rcvd_from_srvr[6];
+char node_id_drom_srvr[4];
+char node_status_from_srvr[2];
+uint64_t n_add_1 = 0x11223344AB;
+uint64_t n_add_2 = 0x11223344BB;
+bool data_avlbl_frm_srvr = false;
+uint8_t zunk_data[30];
+/* USER CODE END 0 */
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
+int main(void)
+{
+  /* USER CODE BEGIN 1 */
+
+  /* USER CODE END 1 */
+
+  /* MCU Configuration--------------------------------------------------------*/
+
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
+
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
+  /* Configure the system clock */
+  SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
+
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_SPI1_Init();
+  MX_USART2_UART_Init();
+  MX_USART1_UART_Init();
+  /* USER CODE BEGIN 2 */
+  Gateway_NRF_Init();
+  HAL_UART_Receive_IT(&huart1, received_data_from_srvr, 7);
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, 1);
+	while (1) {
+    /* USER CODE END WHILE */
+
+    /* USER CODE BEGIN 3 */
+		if (NRF24_available()) {
+			HAL_Delay(10);
+			process_received_data_from_node();
+			//and send data to server
+			HAL_Delay(50);
+		}
+		if(data_avlbl_frm_srvr){
+
+
+			HAL_UART_Receive_IT(&huart1, received_data_from_srvr, 7);
+			//check the id, and pass pipe address to transmitt mode accordingly
+			HAL_UART_Transmit(&huart2, (uint8_t*)"msg received from server ::> ", strlen("msg received from server ::> "), 10);
+			HAL_UART_Transmit(&huart2, received_data_from_srvr, 32, 10);
+			process_data_rcvd_frm_srvr();
+			check_id_for_tx_mode();
+			Switch_to_Transmitt_mode(pip_add_for_data_tx);
+			Transmitt_srvr_msg_to_node();
+			Switch_to_Receiver_mode();
+			data_avlbl_frm_srvr = 0;
+			memset(received_data_from_srvr, 0, sizeof(received_data_from_srvr));
+		}
+		HAL_GPIO_TogglePin(LED_pin_GPIO_Port, LED_pin_Pin);
+		HAL_Delay(100);
+	}
+  /* USER CODE END 3 */
+}
+
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief SPI1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI1_Init(void)
+{
+
+  /* USER CODE BEGIN SPI1_Init 0 */
+
+  /* USER CODE END SPI1_Init 0 */
+
+  /* USER CODE BEGIN SPI1_Init 1 */
+
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
+
+  /* USER CODE END SPI1_Init 2 */
+
+}
+
+/**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+/* USER CODE BEGIN MX_GPIO_Init_1 */
+/* USER CODE END MX_GPIO_Init_1 */
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(LED_pin_GPIO_Port, LED_pin_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, CSN_pin_Pin|CE_pin_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : LED_pin_Pin */
+  GPIO_InitStruct.Pin = LED_pin_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LED_pin_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : CSN_pin_Pin CE_pin_Pin */
+  GPIO_InitStruct.Pin = CSN_pin_Pin|CE_pin_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+/* USER CODE BEGIN MX_GPIO_Init_2 */
+/* USER CODE END MX_GPIO_Init_2 */
+}
+
+/* USER CODE BEGIN 4 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  /* Prevent unused argument(s) compilation warning */
+  UNUSED(huart);
+  /* NOTE: This function should not be modified, when the callback is needed,
+           the HAL_UART_RxCpltCallback could be implemented in the user file
+   */
+   data_avlbl_frm_srvr = 1;
+   HAL_UART_Receive_IT(&huart1, received_data_from_srvr, 7);
+   HAL_UART_Transmit(&huart2, (uint8_t*)"\n CALL BACK TRIGGERED", strlen("\n CALL BACK TRIGGERED"), 10);
+}
+void Switch_to_Transmitt_mode(uint64_t pipe_addr_for_tx_mod){
+    NRF24_stopListening();
+    NRF24_openWritingPipe(pipe_addr_for_tx_mod);
+    NRF24_setChannel(52);
+}
+void Transmitt_srvr_msg_to_node(){
+	//uint8_t msg_to_node[32] = "001,0";
+for(int i = 0; i<= 10; i++){
+	if(!NRF24_write(received_data_from_srvr,32)){
+		  NRF24_write(received_data_from_srvr,32);
+		  HAL_UART_Transmit(&huart2, (uint8_t *)"Transmitt to node waiting for ack\n", strlen("Transmitt to node waiting for ack\n"),10);
+		  HAL_Delay(400);
+		  }
+	else{
+		  HAL_UART_Transmit(&huart2, (uint8_t *)"Transmitt to node Transmitted successfully\n", strlen("Transmitt to node Transmitted successfully\n"),10);
+	      HAL_Delay(100);
+		  break;
+	}
+	}
+}
+void Switch_to_Receiver_mode(void){
+NRF24_setChannel(52);
+NRF24_openReadingPipe(1, pipe_addr);
+NRF24_startListening();
+}
+void Gateway_NRF_Init(void){
+NRF24_begin(CE_pin_GPIO_Port, CSN_pin_Pin, CE_pin_Pin, hspi1);
+nrf24_DebugUART_Init(huart2);
+
+NRF24_setAutoAck(true);
+NRF24_setChannel(52);
+NRF24_setPayloadSize(32);
+NRF24_openReadingPipe(1, pipe_addr);
+NRF24_startListening();
+printRadioSettings();
+}
+void process_received_data_from_node(void){
+	NRF24_read(received_data_from_nodes, 32); //store received data
+	received_data_from_nodes[31] = '\r'; //add \n in the data
+	received_data_from_nodes[32] = '\n'; //add \n in the data
+	//trim message to 6 char and send it to server
+	memcpy(trimmed_data_received_from_node,&received_data_from_nodes,5);
+	//send data to debug port
+	HAL_UART_Transmit(&huart2, (uint8_t*) trimmed_data_received_from_node, 5,10); //send data to debug port
+	HAL_UART_Transmit(&huart1, (uint8_t*) trimmed_data_received_from_node, 5,10); //send data to debug port
+}
+void process_data_rcvd_frm_srvr(void){
+	memcpy(trimmed_data_rcvd_from_srvr,&received_data_from_srvr,4);
+	memcpy(node_id_drom_srvr,&trimmed_data_rcvd_from_srvr,3);
+	node_status_from_srvr[0] =  trimmed_data_rcvd_from_srvr[4];
+}
+void check_id_for_tx_mode(){
+HAL_GPIO_TogglePin(LED_pin_GPIO_Port, LED_pin_Pin);
+if((strcmp((char*) node_id_drom_srvr, "001") == 0)){
+	pip_add_for_data_tx = n_add_1;
+}
+if((strcmp((char*) node_id_drom_srvr, "002") == 0)){
+	pip_add_for_data_tx = n_add_2;
+}
+}
+/* USER CODE END 4 */
+
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1) {
+		HAL_GPIO_TogglePin(LED_pin_GPIO_Port, LED_pin_Pin);
+		HAL_Delay(1000);
+	}
+  /* USER CODE END Error_Handler_Debug */
+}
+
+#ifdef  USE_FULL_ASSERT
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(uint8_t *file, uint32_t line)
+{
+  /* USER CODE BEGIN 6 */
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* USER CODE END 6 */
+}
+#endif /* USE_FULL_ASSERT */

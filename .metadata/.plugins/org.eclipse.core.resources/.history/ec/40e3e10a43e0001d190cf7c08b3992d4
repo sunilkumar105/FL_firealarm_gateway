@@ -1,0 +1,16 @@
+/*
+ * utility.h
+ *
+ *  Created on: 19-Apr-2023
+ *      Author: sunil
+ */
+
+
+#ifndef INC_UTILITY_H_
+#define INC_UTILITY_H_
+
+#define pipe_addr_d_1_for_tx_frm_srvr 0x001122334400;
+#define pipe_addr_d_2_for_tx_frm_srvr 0x001122334401;
+
+
+#endif /* INC_UTILITY_H_ */

@@ -1,0 +1,12 @@
+../Core/Src/main.c:83:5:main	8	static
+../Core/Src/main.c:140:6:SystemClock_Config	72	static
+../Core/Src/main.c:177:13:MX_SPI1_Init	8	static
+../Core/Src/main.c:215:13:MX_USART2_UART_Init	8	static
+../Core/Src/main.c:248:13:MX_GPIO_Init	40	static
+../Core/Src/main.c:296:6:NRF_init_as_node	112	static
+../Core/Src/main.c:307:6:Transmit_Update	16	static
+../Core/Src/main.c:324:6:Switch_to_Receiver_mode	8	static
+../Core/Src/main.c:331:6:untill_alarm_reset	8	static
+../Core/Src/main.c:382:6:Switch_to_Transmitt_mode	8	static
+../Core/Src/main.c:389:6:alarm_light_and_hooter	16	static
+../Core/Src/main.c:404:6:Error_Handler	4	static,ignoring_inline_asm
