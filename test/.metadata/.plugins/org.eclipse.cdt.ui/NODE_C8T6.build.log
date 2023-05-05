@@ -1,0 +1,10 @@
+19:07:40 **** Incremental Build of configuration Debug for project Node_C8T6 ****
+make -j8 all 
+arm-none-eabi-size   Node_C8T6.elf 
+   text	   data	    bss	    dec	    hex	filename
+  18788	    136	   1952	  20876	   518c	Node_C8T6.elf
+Finished building: default.size.stdout
+ 
+
+19:07:41 Build Finished. 0 errors, 0 warnings. (took 530ms)
+

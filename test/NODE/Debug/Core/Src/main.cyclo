@@ -1,0 +1,12 @@
+main.c:83:5:main	2
+main.c:140:6:SystemClock_Config	3
+main.c:188:13:MX_SPI1_Init	2
+main.c:226:13:MX_USART2_UART_Init	2
+main.c:259:13:MX_GPIO_Init	1
+main.c:308:6:NRF_init_as_node	1
+main.c:318:6:Transmit_Update	3
+main.c:335:6:Switch_to_Receiver_mode	1
+main.c:342:6:untill_alarm_reset	7
+main.c:393:6:Switch_to_Transmitt_mode	1
+main.c:400:6:alarm_light_and_hooter	3
+main.c:415:6:Error_Handler	1

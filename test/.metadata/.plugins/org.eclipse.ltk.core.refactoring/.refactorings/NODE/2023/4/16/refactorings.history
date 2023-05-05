@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;NODE/Core/Src/NRF_UTILITY&apos; to &apos;NRF_UTILITY.c&apos;" description="Rename resource &apos;NRF_UTILITY&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="Core/Src/NRF_UTILITY" name="NRF_UTILITY.c" stamp="1681838873755" updateReferences="true"/>
+</session>
